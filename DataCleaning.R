@@ -1,6 +1,7 @@
+#
 # Data Cleaning
-# 
 # This file compiles hospital-level information from various files into one cleaned dataset
+#
 
 
 ## SETUP
@@ -14,11 +15,11 @@ library(readxl)
 
 
 
-## WAIT TIME DATA
-# Source: https://data.medicare.gov/data/archives/hospital-compare
+## IMPORT WAIT TIME DATA
+# Data source: https://data.medicare.gov/data/archives/hospital-compare
 
 # Read in hospital wait time data
-tec18 <- read.csv("Data/Timely and Effective Care - Hospital 2018.csv", 
+tec18 <- read.csv("OriginalData/Timely and Effective Care - Hospital 2018.csv", 
                   header = TRUE, 
                   na.strings = "Not Available",
                   stringsAsFactors = FALSE)
@@ -32,6 +33,15 @@ tec18$ZIP.Code <- sapply(tec18$ZIP.Code, function(x) { if(nchar(x) < 5) {paste0(
 
 # Extract each hospital's identifying information (Address, City, State, ZIP, etc)
 identifying_info <- tec18[tec18$Measure.ID == "EDV", 2:8]
+
+# Add flag for states that have expanded Medicaid under the Afordable Care Act of 2010
+# Source: https://www.michiganradio.org/post/new-data-show-benefits-michigans-medicaid-expansion
+identifying_info$MedicaidExpansion <- ifelse(identifying_info$State %in% c("WY", "SD", "WI", "KS", 
+                                                                           "OK", "MO", "TX", "TN", 
+                                                                           "MS", "AL", "GA", "SC", 
+                                                                           "NC", "FL"), 0, 1)
+# Reorder columns
+identifying_info <- identifying_info[,c(8,1:7)]
 
 # Extract each hospital's emergency department volume 
 # (factor variable, levels = low, medium, high, very high)
@@ -51,11 +61,12 @@ wait_times <- reshape(tec18[tec18$Measure.ID %in% c("ED_1b", "ED_2b", "OP_18b", 
 wait_times$Score.OP_22 <- wait_times$Score.OP_22 / 100
 
 
-## HOSPITAL OVERALL RATINGS (1 to 5 scale)
+
+## IMPORT HOSPITAL OVERALL RATINGS (1 to 5 scale)
 # Source: https://data.medicare.gov/data/archives/hospital-compare
 
 # Read in hospital ratings data
-ratings <- read.csv("Data/Hospital General Information.csv", na.strings = "Not Available")
+ratings <- read.csv("OriginalData/Hospital General Information.csv", na.strings = "Not Available")
 
 # Keep only Facility ID and Rating
 ratings <- ratings[,c(1,13)]
@@ -65,12 +76,11 @@ ratings$Facility.ID <- as.integer(levels(ratings$Facility.ID))[ratings$Facility.
 
 
 
-
-## COMPLICATION AND DEATH RATES
+## IMPORT COMPLICATION AND DEATH RATES
 # Source: https://data.medicare.gov/data/archives/hospital-compare
 
 # Read in hospital-level complication/death rate data
-complications <- read.csv("Data/Complications and Deaths - Hospital.csv", na.strings = "Not Available")
+complications <- read.csv("OriginalData/Complications and Deaths - Hospital.csv", na.strings = "Not Available")
 
 # Reshape data, keeping only death rates for pneumonia, acute myocardial infarction (heart attack), and stroke
 complications <- reshape(complications[complications$Measure.ID %in% c("MORT_30_PN", "MORT_30_AMI", "MORT_30_STK"),c(1,9,13)],
@@ -81,11 +91,11 @@ complications$Facility.ID <- as.integer(levels(complications$Facility.ID))[compl
 
 
 
-## HOSPITAL SERVICE AREA INFORMATION
+## IMPORT HOSPITAL SERVICE AREA INFORMATION
 # Source: https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Hospital-Service-Area-File/Download/HSAF2018.zip
 
 # Read in hospital service area data
-serv <- read.csv("Data/2018_HSAF.csv", header = TRUE, stringsAsFactors = FALSE)
+serv <- read.csv("OriginalData/2018_HSAF.csv", header = TRUE, stringsAsFactors = FALSE)
 
 # Convert Facility ID to numeric and rename 
 serv$MEDICARE_PROV_NUM <- as.numeric(serv$MEDICARE_PROV_NUM)
@@ -104,12 +114,12 @@ serv$ZIP_CODE <- sapply(serv$ZIP_CODE, function(x) {if(nchar(x)<5){paste0(0,x)}e
 serv <- serv[,-c(3,4)]
 
 
-## RACE DEMOGRAPHICS BY ZIP CODE
+## IMPORT RACE DEMOGRAPHICS BY ZIP CODE
 # from 2018 American Community Survey 
 # SOURCE: https://data.census.gov/cedsci/table?g=0100000US.860000&tid=ACSDP5Y2018.DP05&hidePreview=false&vintage=2018&layer=VT_2018_860_00_PY_D1&cid=DP05_0001E
 
 # Read in demographic info by zip code
-race_raw <- as.matrix(read.csv("Data/Race_by_ZIP.csv", header = FALSE, stringsAsFactors = F))
+race_raw <- as.matrix(read.csv("OriginalData/Race_by_ZIP.csv", header = FALSE, stringsAsFactors = F))
 
 # Convert to data frame and name columns properly
 race <- data.frame(race_raw[3:nrow(race_raw),])
@@ -117,20 +127,24 @@ names(race) <- race_raw[1,]
 race$NAME <- substr(race$NAME, 7, 11)
 
 # Create subset of relevant columns only and Remove Puerto Rico codes
-race <- subset(race, select = c("NAME", "DP05_0033E", "DP05_0064E", "DP05_0065E", "DP05_0066E", "DP05_0067E", "DP05_0071E"),
+race <- subset(race, select = c("NAME", "DP05_0033E", "DP05_0065E", "DP05_0066E", 
+                                "DP05_0067E", "DP05_0064E", "DP05_0071E", "DP05_0069E", "DP05_0058E", "DP05_0004E"), 
                substr(race$NAME, 1, 2) != "00")
 
 # Convert demographic info to proportions of White, Black, Native American, etc in each zip code 
-race[,2:7] <- sapply(race[,2:7], function(x) { as.numeric(levels(x))[x] })
-race[,3:7] <- sapply(race[,3:7], function(x) { x / race[,2]})
+race[,2:9] <- sapply(race[,2:9], function(x) { as.numeric(levels(x))[x] })
+race[,3:9] <- sapply(race[,3:9], function(x) { x / race[,2]})
+race[,10] <- ifelse(race[,10] == "-", NA, as.numeric(levels(race[,10]))[race[,10]])
 race <- race[,-2]
 
 # Rename "NAME" as "ZIP_CODE" in preparation for merge
-names(race) <- c("ZIP_CODE", "White", "Black", "NativeAmerican", "Asian", "Hispanic")
+names(race) <- c("ZIP_CODE", "Black", "NativeAmerican", "Asian", "White", "Hispanic", "SomeOtherRace", "TwoOrMoreRaces", "SexRatio")
 
 
-## RURAN/URBAN FLAG
-rural_zips <- read_xlsx("Data/forhp-eligible-zips.xlsx")$ZIP
+
+## IMPORT DATA FOR RURAN/URBAN SCORE
+# Source: https://www.hrsa.gov/sites/default/files/hrsa/ruralhealth/aboutus/definition/forhp-eligible-zips.xlsx
+rural_zips <- read_xlsx("OriginalData/forhp-eligible-zips.xlsx")$ZIP
 
 
 
@@ -142,22 +156,21 @@ serv_by_race <- serv_by_race[serv_by_race$ZIP_CODE %in% unique(serv$ZIP_CODE),]
 serv_by_race <- serv_by_race[order(serv_by_race$Facility.ID),]
 serv_by_race$Rural <- ifelse(serv_by_race$ZIP_CODE %in% rural_zips, 1, 0)
 
-str(serv_by_race)
-
 # Set up calculation of proportions of each race served by each hospital
 compute_racial_stats <- function(data){
   # Store Facility IDs
   ids <- unique(data$Facility.ID)
   # Create empty matrix to store weighted means
-  scores <- matrix(nrow = length(ids), ncol = 6)
+  scores <- matrix(nrow = length(ids), ncol = 9)
   # Compute weighted average for each race for each hospital
   for(i in 1:length(ids)){
-    scores[i,] <- sapply(data[data$Facility.ID == ids[i],4:9], 
+    scores[i,] <- sapply(data[data$Facility.ID == ids[i],4:12], 
                          function(x) { weighted.mean(x, w = data[data$Facility.ID == ids[i],3], na.rm = T) })
   }
   # Output results 
   results <- data.frame(ids, scores)
-  names(results) <- c("Facility.ID", "White", "Black", "NativeAmerican", "Asian", "Hispanic", "RuralScore")
+  names(results) <- c("Facility.ID", "Black", "NativeAmerican", "Asian", "White", "Hispanic", 
+                      "SomeOtherRace", "TwoOrMoreRaces", "SexRatio", "RuralScore")
   return(results)
 }
 
@@ -181,19 +194,16 @@ rm(step1, step2, step3, step4, step5, step6, step7)
 
 # Use cbind() to combine all merges and data into one
 
-hospital_data <- cbind(wait_times, bigmerge, edv, identifying_info)
+hospital_data <- cbind(wait_times, edv, bigmerge, identifying_info)
 
 
 # Remove rows containing no waiting time data
 hospital_data <- filter(hospital_data, !is.na(Score.ED_1b) | !is.na(Score.ED_2b) | !is.na(Score.OP_18b) )
 
 # Rename variables
-names(hospital_data)[c(1:10, 17)] <- c("ID", "ArrivalToAdmit", "AdmitToRoom", "TimeInER", "MH_TimeInER", 
-                          "NotSeen", "OverallRating", "HeartAttackRate", "PneumoniaRate", "StrokeRate",
-                          "Volume")
+names(hospital_data)[1:11] <- c("ID", "ArrivalToAdmit", "AdmitToRoom", "TimeInER", "MH_TimeInER", 
+                          "NotSeen", "Volume", "OverallRating", "HeartAttackRate", "PneumoniaRate", "StrokeRate")
 
-str(hospital_data)
-
-write.csv(hospital_data, "2018.csv", row.names = FALSE)
+write.csv(hospital_data, "WaitTimeData.csv", row.names = FALSE)
 
 
