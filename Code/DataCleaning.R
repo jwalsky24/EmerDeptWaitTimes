@@ -34,12 +34,17 @@ tec18$ZIP.Code <- sapply(tec18$ZIP.Code, function(x) { if(nchar(x) < 5) {paste0(
 # Extract each hospital's identifying information (Address, City, State, ZIP, etc)
 identifying_info <- tec18[tec18$Measure.ID == "EDV", c(12,2:8)]
 
+# Capitalize "Emergency Dept Volume" level names 
+identifying_info$Score <- gsub("(^|[[:space:]])([[:alpha:]])", "\\1\\U\\2",
+                               identifying_info$Score,
+                               perl = TRUE)
+
 # Add flag for states that have expanded Medicaid under the Afordable Care Act of 2010
 # Source: https://www.michiganradio.org/post/new-data-show-benefits-michigans-medicaid-expansion
 identifying_info$MedicaidExpansion <- ifelse(identifying_info$State %in% c("WY", "SD", "WI", "KS", 
                                                                            "OK", "MO", "TX", "TN", 
                                                                            "MS", "AL", "GA", "SC", 
-                                                                           "NC", "FL"), 0, 1)
+                                                                           "NC", "FL"), "No", "Yes")
 # Reorder columns
 identifying_info <- identifying_info[,c(1,9,2:8)]
 
@@ -67,23 +72,7 @@ ratings <- read.csv("OriginalData/Hospital General Information.csv", na.strings 
 ratings <- ratings[,c(1,13)]
 
 # Format Facility.ID as an integer
-ratings$Facility.ID <- as.integer(levels(ratings$Facility.ID))[ratings$Facility.ID]
-
-
-
-## IMPORT COMPLICATION AND DEATH RATES
-# Source: https://data.medicare.gov/data/archives/hospital-compare
-
-# Read in hospital-level complication/death rate data
-complications <- read.csv("OriginalData/Complications and Deaths - Hospital.csv", na.strings = "Not Available")
-
-# Reshape data, keeping only death rates for pneumonia, acute myocardial infarction (heart attack), and stroke
-complications <- reshape(complications[complications$Measure.ID %in% c("MORT_30_PN", "MORT_30_AMI", "MORT_30_STK"),c(1,9,13)],
-                timevar = "Measure.ID", idvar = "Facility.ID", direction = "wide")
-
-# Format Facility.ID as an integer
-complications$Facility.ID <- as.integer(levels(complications$Facility.ID))[complications$Facility.ID]
-
+ratings$Facility.ID <- as.integer(ratings$Facility.ID)
 
 
 ## IMPORT HOSPITAL SERVICE AREA INFORMATION
@@ -128,9 +117,8 @@ race <- subset(race, select = c("NAME", "DP05_0033E", "DP05_0065E", "DP05_0066E"
                substr(race$NAME, 1, 2) != "00")
 
 # Convert demographic info to proportions of White, Black, Native American, etc in each zip code 
-race[,2:10] <- sapply(race[,2:10], function(x) { as.numeric(levels(x))[x] })
+race[,2:11] <- sapply(race[,2:11], as.numeric)
 race[,3:9] <- sapply(race[,3:9], function(x) { x / race[,2]})
-race[,11] <- ifelse(race[,11] == "-", NA, as.numeric(levels(race[,11]))[race[,11]])
 race <- race[,-2]
 
 # Rename "NAME" as "ZIP_CODE" in preparation for merge
@@ -187,27 +175,27 @@ race_stats <- compute_racial_stats(serv_by_race)
 # - Death Rates from Pneumonia / Heart Attack / Stroke for each hospital
 step1 <- merge(ids, ratings, all = TRUE)
 step2 <- step1[step1$Facility.ID %in% unique(tec18$Facility.ID),]
-step3 <- merge(step2, complications, all = TRUE)
+step3 <- merge(step2, race_stats, all = TRUE)
 step4 <- step3[step3$Facility.ID %in% unique(tec18$Facility.ID),]
-step5 <- merge(step4, race_stats, all = TRUE)
+step5 <- merge(step4, beds, all = TRUE)
 step6 <- step5[step5$Facility.ID %in% unique(tec18$Facility.ID),]
-step7 <- merge(step6, beds, all = TRUE)
-step8 <- step7[step7$Facility.ID %in% unique(tec18$Facility.ID),]
-step9 <- step8[order(step8$Facility.ID),]
-bigmerge <- step9[,-1]
-rm(step1, step2, step3, step4, step5, step6, step7, step8, step9)
+step7 <- step6[order(step6$Facility.ID),]
+bigmerge <- step7[,-1]
+rm(step1, step2, step3, step4, step5, step6, step7)
 
 # Use cbind() to combine all merges and data into one
 hospital_data <- cbind(wait_times, bigmerge, identifying_info)
-
-# Remove rows containing no waiting time data
-hospital_data <- filter(hospital_data, !is.na(Score.ED_1b) | !is.na(Score.ED_2b) | !is.na(Score.OP_18b) )
-hospital_data <- filter(hospital_data, !is.na(White) & !is.na(Black) & !is.na(Hispanic))
-
+str(hospital_data)
 # Rename variables
-names(hospital_data)[c(1:10,22)] <- c("ID", "AdmitLOS", "WaitForBed", "NonAdmitLOS", "NonAdmitMHLOS", 
-                          "LWBSrate", "HospitalRating", "AMI.DeathRate", "PneumoniaDeathRate", "StrokeDeathRate", "ED.Volume")
+names(hospital_data)[c(1:7,19)] <- c("ID", "AdmitLOS", "WaitForBed", "NonAdmitLOS", "MHLOS", 
+                                      "LWBSrate", "HospitalRating", "ED.Volume")
+# Save raw data
+write.csv(hospital_data, "RawData.csv", row.names = FALSE)
+
+# Remove rows containing no waiting time data or race info
+hospital_data <- filter(hospital_data, !is.na(AdmitLOS) | !is.na(WaitForBed) | !is.na(NonAdmitLOS) | 
+                          !is.na(MHLOS) | !is.na(LWBSrate) )
+hospital_data <- filter(hospital_data, !is.na(White) & !is.na(Black) & !is.na(Hispanic) & !is.na(Asian) & !is.na(NativeAmerican))
 
 # Write CSV
 write.csv(hospital_data, "WaitTimeData.csv", row.names = FALSE)
-
