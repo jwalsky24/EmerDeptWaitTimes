@@ -8,18 +8,18 @@
 
 # Load necessary libraries
 library(tidyverse)
-library(haven)
-library(fitdistrplus)
-library(gamlss)
 library(readxl)
-
 
 
 ## IMPORT WAIT TIME DATA
 # Data source: https://data.medicare.gov/data/archives/hospital-compare
 
 # Read in hospital wait time data
-tec18 <- read.csv("OriginalData/Timely and Effective Care - Hospital 2018.csv", 
+tec18 <- read.csv("OriginalData/Timely and Effective Care 2018.csv", 
+                  header = TRUE, 
+                  na.strings = "Not Available",
+                  stringsAsFactors = FALSE)
+tec19 <- read.csv("OriginalData/Timely and Effective Care 2019.csv", 
                   header = TRUE, 
                   na.strings = "Not Available",
                   stringsAsFactors = FALSE)
@@ -27,17 +27,22 @@ tec18 <- read.csv("OriginalData/Timely and Effective Care - Hospital 2018.csv",
 # Restrict dataset to the 50 states plus Washington, DC
 tec18 <- tec18 %>% 
   filter(!State %in% c("PR", "VI", "AS", "GU", "MP")) 
+tec19 <- tec19 %>% 
+  filter(!State %in% c("PR", "VI", "AS", "GU", "MP")) 
 
 # Format zip codes to include leading zero when applicable
 tec18$ZIP.Code <- sapply(tec18$ZIP.Code, function(x) { if(nchar(x) < 5) {paste0(0, x)} else{x} })
 
 # Extract each hospital's identifying information (Address, City, State, ZIP, etc)
-identifying_info <- tec18[tec18$Measure.ID == "EDV", c(12,2:8)]
+identifying_info <- tec18[tec18$Measure.ID == "EDV", c(2:8)]
+
+edv <- tec19[tec19$Measure.ID == "EDV", c(1,12)]
 
 # Capitalize "Emergency Dept Volume" level names 
-identifying_info$Score <- gsub("(^|[[:space:]])([[:alpha:]])", "\\1\\U\\2",
-                               identifying_info$Score,
-                               perl = TRUE)
+edv$Score <- gsub("(^|[[:space:]])([[:alpha:]])", "\\1\\U\\2",
+                  edv$Score,
+                  perl = TRUE)
+edv$Facility.ID <- as.numeric(edv$Facility.ID)
 
 # Add flag for states that have expanded Medicaid under the Afordable Care Act of 2010
 # Source: https://www.michiganradio.org/post/new-data-show-benefits-michigans-medicaid-expansion
@@ -45,8 +50,6 @@ identifying_info$MedicaidExpansion <- ifelse(identifying_info$State %in% c("WY",
                                                                            "OK", "MO", "TX", "TN", 
                                                                            "MS", "AL", "GA", "SC", 
                                                                            "NC", "FL"), "No", "Yes")
-# Reorder columns
-identifying_info <- identifying_info[,c(1,9,2:8)]
 
 # Now that non-numeric information has been extracted, set all non-numeric score values to NA
 tec18$Score <- ifelse(grepl('[0-9]', tec18$Score), as.numeric(tec18$Score), NA)
@@ -66,7 +69,7 @@ wait_times$Score.OP_22 <- wait_times$Score.OP_22 / 100
 # Source: https://data.medicare.gov/data/archives/hospital-compare
 
 # Read in hospital ratings data
-ratings <- read.csv("OriginalData/Hospital General Information.csv", na.strings = "Not Available")
+ratings <- read.csv("OriginalData/Ratings2018.csv", na.strings = "Not Available")
 
 # Keep only Facility ID and Rating
 ratings <- ratings[,c(1,13)]
@@ -79,7 +82,7 @@ ratings$Facility.ID <- as.integer(ratings$Facility.ID)
 # Source: https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Hospital-Service-Area-File/Download/HSAF2018.zip
 
 # Read in hospital service area data
-serv <- read.csv("OriginalData/2018_HSAF.csv", header = TRUE, stringsAsFactors = FALSE)
+serv <- read.csv("OriginalData/HSAF2018.csv", header = TRUE, stringsAsFactors = FALSE)
 
 # Convert Facility ID to numeric and rename 
 serv$MEDICARE_PROV_NUM <- as.numeric(serv$MEDICARE_PROV_NUM)
@@ -103,7 +106,7 @@ serv <- serv[,-c(3,4)]
 # SOURCE: https://data.census.gov/cedsci/table?g=0100000US.860000&tid=ACSDP5Y2018.DP05&hidePreview=false&vintage=2018&layer=VT_2018_860_00_PY_D1&cid=DP05_0001E
 
 # Read in demographic info by zip code
-race_raw <- as.matrix(read.csv("OriginalData/Race_by_ZIP.csv", header = FALSE, stringsAsFactors = F))
+race_raw <- as.matrix(read.csv("OriginalData/ACS2018.csv", header = FALSE, stringsAsFactors = F))
 
 # Convert to data frame and name columns properly
 race <- data.frame(race_raw[3:nrow(race_raw),])
@@ -129,13 +132,13 @@ names(race) <- c("ZIP_CODE", "Black", "NativeAmerican", "Asian", "White", "Hispa
 
 ## IMPORT DATA FOR RURAN/URBAN SCORE
 # Source: https://www.hrsa.gov/sites/default/files/hrsa/ruralhealth/aboutus/definition/forhp-eligible-zips.xlsx
-rural_zips <- readxl::read_xlsx("OriginalData/forhp-eligible-zips.xlsx")$ZIP
+rural_zips <- readxl::read_xlsx("OriginalData/FORHP_RuralZips.xlsx")$ZIP
 
 
 
 ## IMPORT HOSPITAL VOLUME (NUMBER OF BEDS)
 
-beds <- read.csv("OriginalData/HospitalList2019b.csv")[,c(1,15)]
+beds <- read.csv("OriginalData/Beds2018.csv")[,c(1,15)]
 names(beds) <- c("Facility.ID","Beds")
 
 
@@ -179,13 +182,15 @@ step3 <- merge(step2, race_stats, all = TRUE)
 step4 <- step3[step3$Facility.ID %in% unique(tec18$Facility.ID),]
 step5 <- merge(step4, beds, all = TRUE)
 step6 <- step5[step5$Facility.ID %in% unique(tec18$Facility.ID),]
-step7 <- step6[order(step6$Facility.ID),]
-bigmerge <- step7[,-1]
-rm(step1, step2, step3, step4, step5, step6, step7)
+step7 <- merge(step6, edv, all = TRUE)
+step8 <- step7[step7$Facility.ID %in% unique(tec18$Facility.ID),]
+step9 <- step8[order(step8$Facility.ID),]
+bigmerge <- step9[,-1]
+rm(step1, step2, step3, step4, step5, step6, step7, step8, step9)
 
 # Use cbind() to combine all merges and data into one
 hospital_data <- cbind(wait_times, bigmerge, identifying_info)
-str(hospital_data)
+
 # Rename variables
 names(hospital_data)[c(1:7,19)] <- c("ID", "AdmitLOS", "WaitForBed", "NonAdmitLOS", "MHLOS", 
                                       "LWBSrate", "HospitalRating", "ED.Volume")

@@ -299,11 +299,36 @@ mhlos.nb <- glm.nb(MHLOS ~ Beds + ED.Volume + HospitalRating +
 # Adjust LWBSrate so values are within (0,1) (Smithson and Verkuilen, 2006)
 hospital_data$LWBSrateAdjusted <- (hospital_data$LWBSrate * (length(na.omit(hospital_data$LWBSrate)) - 1) + 0.5) / 
   length(na.omit(hospital_data$LWBSrate))
-# Construct Beta model
-lwbs.beta <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+# Construct Beta models with different link functions
+lwbs.beta.logit <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                        RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
                      data = hospital_data, na.action = na.omit)
+lwbs.beta.probit <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+                              RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                              Black + Hispanic + Asian + NativeAmerican,
+                            link = "probit", 
+                            data = hospital_data, na.action = na.omit)
+lwbs.beta.log <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+                       RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                       Black + Hispanic + Asian + NativeAmerican,
+                       link = "log", 
+                     data = hospital_data, na.action = na.omit)
+lwbs.beta.loglog <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+                               RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                               Black + Hispanic + Asian + NativeAmerican,
+                             link = "loglog", 
+                             data = hospital_data, na.action = na.omit)
+lwbs.beta.cloglog <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+                           RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                           Black + Hispanic + Asian + NativeAmerican,
+                         link = "cloglog", 
+                         data = hospital_data, na.action = na.omit)
+lwbs.beta.cauchit <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
+                              RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                              Black + Hispanic + Asian + NativeAmerican,
+                            link = "cauchit", 
+                            data = hospital_data, na.action = na.omit)
 
 
 ##### Assess models with AIC
@@ -317,7 +342,8 @@ alosmodels <- AIC(alos.gaus.id, alos.gaus.log, alos.gaus.inv,
 alosmodels$AIC <- alosmodels$AIC - min(alosmodels$AIC)
 alos.AIC <- alosmodels[order(alosmodels$AIC),]
 alos.AIC
-# Best model: Gamma with inverse link
+# Best model: Gamma with inverse and log links are very similar.
+#             We choose log link due to ease of interpretation.
 
 # Assess valid WaitForBed models (wfb.pois.id returned error)
 wfbmodels <- AIC(wfb.pois.log, wfb.pois.sqrt, wfb.nb)
@@ -349,15 +375,20 @@ mhlos.AIC
 # Best model: Inverse Gaussian with log link
 
 # Assess LWBSrateAdjusted model
-AIC(lwbs.beta)
-# Best (and only) model: Beta
+lwbsmodels <- AIC(lwbs.beta.logit, lwbs.beta.probit, lwbs.beta.log, 
+                  lwbs.beta.loglog, lwbs.beta.cloglog, lwbs.beta.cauchit)
+lwbsmodels$AIC <- lwbsmodels$AIC - min(lwbsmodels$AIC)
+lwbs.AIC <- lwbsmodels[order(lwbsmodels$AIC),]
+lwbs.AIC
+# Best model: All models very similar except cauchit.
+#             We choose log link due to ease of interpretation.
 
 
 ##### Summary of best models
 
-# AdmitLOS: Gamma with lo
+# AdmitLOS: Gamma with log link
 # WaitForBed: Negative Binomial
-# NonAdmitLOS: Gamma
+# NonAdmitLOS: Gamma with no link
 # MHLOS: Inverse Gaussian
 # LWBSrateAdjusted: Beta
 
@@ -370,20 +401,20 @@ AIC(lwbs.beta)
 ### Response variable: AdmitLOS
 # Race covariates only
 alos.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
-               family = Gamma(link = "inverse"), data = hospital_data, na.action = na.omit)
+               family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
 # Race covariates + Demographic covariates
 alos.m2 <- glm(AdmitLOS ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                  Black + Hispanic + Asian + NativeAmerican, 
-               family = Gamma(link = "inverse"), data = hospital_data, na.action = na.omit)
+               family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 alos.m3 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                  Black + Hispanic + Asian + NativeAmerican, 
-               family = Gamma(link = "inverse"), data = hospital_data, na.action = na.omit)
+               family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 alos.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                  RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                  Black + Hispanic + Asian + NativeAmerican, 
-               family = Gamma(link = "inverse"), data = hospital_data, na.action = na.omit)
+               family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
 
 ### Response variable: WaitForBed
 # Race covariates only
@@ -442,20 +473,20 @@ mhlos.m4 <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating +
 ### Response variable: LWBSrate (adjusted)
 # Race covariates only
 lwbs.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
-                                data = hospital_data, na.action = na.omit)
+                                link = "log", data = hospital_data, na.action = na.omit)
 # Race covariates + Demographic covariates
 lwbs.m2 <- betareg(LWBSrateAdjusted ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                                   Black + Hispanic + Asian + NativeAmerican, 
-                                data = hospital_data, na.action = na.omit)
+                                link = "log", data = hospital_data, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 lwbs.m3 <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                                   Black + Hispanic + Asian + NativeAmerican, 
-                                data = hospital_data, na.action = na.omit)
+                                  link = "log", data = hospital_data, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 lwbs.m4 <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                                   RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                                   Black + Hispanic + Asian + NativeAmerican, 
-                                data = hospital_data, na.action = na.omit)
+                                  link = "log", data = hospital_data, na.action = na.omit)
 
 
 
@@ -535,20 +566,20 @@ hospital_data.lwbs.m4 <- hospital_data[-c(1475),]
 ### Response variable: AdmitLOS
 # Race covariates only
 alos.or.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
-                  family = Gamma(link = "inverse"), data = hospital_data.alos.m1, na.action = na.omit)
+                  family = Gamma(link = "log"), data = hospital_data.alos.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
 alos.or.m2 <- glm(AdmitLOS ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                     Black + Hispanic + Asian + NativeAmerican, 
-                  family = Gamma(link = "inverse"), data = hospital_data.alos.m2, na.action = na.omit)
+                  family = Gamma(link = "log"), data = hospital_data.alos.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 alos.or.m3 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                     Black + Hispanic + Asian + NativeAmerican, 
-                  family = Gamma(link = "inverse"), data = hospital_data.alos.m3, na.action = na.omit)
+                  family = Gamma(link = "log"), data = hospital_data.alos.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 alos.or.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                     RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                     Black + Hispanic + Asian + NativeAmerican, 
-                  family = Gamma(link = "inverse"), data = hospital_data.alos.m4, na.action = na.omit)
+                  family = Gamma(link = "log"), data = hospital_data.alos.m4, na.action = na.omit)
 
 ### Response variable: WaitForBed
 # Race covariates only
@@ -607,20 +638,20 @@ mhlos.or.m4 <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating +
 ### Response variable: LWBSrate (adjusted)
 # Race covariates only
 lwbs.or.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
-                      data = hospital_data.lwbs.m1, na.action = na.omit)
+                      link = "log", data = hospital_data.lwbs.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
 lwbs.or.m2 <- betareg(LWBSrateAdjusted ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                         Black + Hispanic + Asian + NativeAmerican, 
-                      data = hospital_data.lwbs.m2, na.action = na.omit)
+                      link = "log", data = hospital_data.lwbs.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 lwbs.or.m3 <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                         Black + Hispanic + Asian + NativeAmerican, 
-                      data = hospital_data.lwbs.m3, na.action = na.omit)
+                      link = "log", data = hospital_data.lwbs.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 lwbs.or.m4 <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                         RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                         Black + Hispanic + Asian + NativeAmerican, 
-                      data = hospital_data.lwbs.m4, na.action = na.omit)
+                      link = "log", data = hospital_data.lwbs.m4, na.action = na.omit)
 
 
 
@@ -663,27 +694,27 @@ summary(lwbs.or.m4)
 ### AdmitLOS
 # Race covariates only
 alos.final.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
-                     family = Gamma(link = "inverse"), data = hospital_data.alos.m1, na.action = na.omit)
+                     family = Gamma(link = "log"), data = hospital_data.alos.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
-alos.final.m2 <- glm(AdmitLOS ~ RuralScore + SexRatio + MedicaidExpansion + 
+alos.final.m2 <- glm(AdmitLOS ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
-                     family = Gamma(link = "inverse"), data = hospital_data.alos.m2, na.action = na.omit)
+                     family = Gamma(link = "log"), data = hospital_data.alos.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 alos.final.m3 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                        Black + Hispanic + Asian + NativeAmerican, 
-                     family = Gamma(link = "inverse"), data = hospital_data.alos.m3, na.action = na.omit)
+                     family = Gamma(link = "log"), data = hospital_data.alos.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 alos.final.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
-                       RuralScore + MedianAge + MedicaidExpansion + 
+                       RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
-                     family = Gamma(link = "inverse"), data = hospital_data.alos.m4, na.action = na.omit)
+                     family = Gamma(link = "log"), data = hospital_data.alos.m4, na.action = na.omit)
 
 ### WaitForBed
 # Race covariates only
 wfb.final.m1 <- glm.nb(WaitForBed ~ Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
-wfb.final.m2 <- glm.nb(WaitForBed ~ RuralScore + SexRatio + MedicaidExpansion + 
+wfb.final.m2 <- glm.nb(WaitForBed ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                          Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
@@ -692,7 +723,7 @@ wfb.final.m3 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
                        data = hospital_data.wfb.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 wfb.final.m4 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating + 
-                         RuralScore + MedianAge + MedicaidExpansion + 
+                         RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                          Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m4, na.action = na.omit)
 
@@ -701,7 +732,7 @@ wfb.final.m4 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
 nlos.final.m1 <- glm(NonAdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
-nlos.final.m2 <- glm(NonAdmitLOS ~ RuralScore + SexRatio + MedicaidExpansion + 
+nlos.final.m2 <- glm(NonAdmitLOS ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
@@ -710,7 +741,7 @@ nlos.final.m3 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 nlos.final.m4 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating + 
-                       RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                       RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m4, na.action = na.omit)
 
@@ -719,7 +750,7 @@ nlos.final.m4 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
 mhlos.final.m1 <- glm(MHLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
-mhlos.final.m2 <- glm(MHLOS ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+mhlos.final.m2 <- glm(MHLOS ~ RuralScore + MedianAge + SexRatio + MedianAge + MedicaidExpansion + 
                         Black + Hispanic + Asian + NativeAmerican, 
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
@@ -728,27 +759,27 @@ mhlos.final.m3 <- glm(MHLOS ~ ED.Volume + HospitalRating +
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 mhlos.final.m4 <- glm(MHLOS ~ ED.Volume + HospitalRating + 
-                        RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+                        RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                         Black + Hispanic + Asian + NativeAmerican, 
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m4, na.action = na.omit)
 
 ### LWBSrateAdjusted
 # Race covariates only
 lwbs.final.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
-                         data = hospital_data.lwbs.m1, na.action = na.omit)
+                         link = "log", data = hospital_data.lwbs.m1, na.action = na.omit)
 # Race covariates + Demographic covariates
-lwbs.final.m2 <- betareg(LWBSrateAdjusted ~ RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
+lwbs.final.m2 <- betareg(LWBSrateAdjusted ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                            Black + Hispanic + Asian + NativeAmerican, 
-                         data = hospital_data.lwbs.m2, na.action = na.omit)
+                         link = "log", data = hospital_data.lwbs.m2, na.action = na.omit)
 # Race covariates + Hospital-level covariates
 lwbs.final.m3 <- betareg(LWBSrateAdjusted ~ ED.Volume + HospitalRating + 
                            Black + Hispanic + Asian + NativeAmerican, 
-                         data = hospital_data.lwbs.m3, na.action = na.omit)
+                         link = "log", data = hospital_data.lwbs.m3, na.action = na.omit)
 # Race covariates + Demographic covariates + Hospital-level covariates
 lwbs.final.m4 <- betareg(LWBSrateAdjusted ~ ED.Volume + HospitalRating + 
-                           RuralScore + SexRatio + MedicaidExpansion + 
+                           RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                            Black + Hispanic + Asian + NativeAmerican, 
-                         data = hospital_data.lwbs.m4, na.action = na.omit)
+                         link = "log", data = hospital_data.lwbs.m4, na.action = na.omit)
 
 
 
