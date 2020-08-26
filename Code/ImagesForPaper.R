@@ -412,9 +412,74 @@ dev.off()
 
 
 
+jpeg("Images/resid.alos.jpg")
+plot(alos.final.m4, which = 1, sub = "", main = "AdmitLOS")
+dev.off()
+
+jpeg("Images/resid.wfb.jpg")
+plot(wfb.final.m4, which = 1, sub = "", main = "WaitForBed")
+dev.off()
+
+jpeg("Images/resid.nlos.jpg")
+plot(nlos.final.m4, which = 1, sub = "", main = "NonAdmitLOS")
+dev.off()
+
+jpeg("Images/resid.mhlos.jpg")
+plot(mhlos.final.m4, which = 1, sub = "", main = "MHLOS")
+dev.off()
+
+jpeg("Images/resid.lwbs.jpg")
+plot(lwbs.final.m4, which = 4, sub = "", main = "LWBSrate")
+dev.off()
+
+jpeg("Images/order.alos.jpg")
+plot(resid(alos.final.m4), type = "b", xlab = "Observation Number", 
+     ylab = "Residuals", main = "AdmitLOS")
+dev.off()
+
+jpeg("Images/order.wfb.jpg")
+plot(resid(wfb.final.m4), type = "b", xlab = "Observation Number", 
+     ylab = "Residuals", main = "WaitForBed")
+dev.off()
+
+jpeg("Images/order.nlos.jpg")
+plot(resid(nlos.final.m4), type = "b", xlab = "Observation Number", 
+     ylab = "Residuals", main = "NonAdmitLOS")
+dev.off()
+
+jpeg("Images/order.mhlos.jpg")
+plot(resid(mhlos.final.m4), type = "b", xlab = "Observation Number", 
+     ylab = "Residuals", main = "MHLOS")
+dev.off()
+
+jpeg("Images/order.lwbs.jpg")
+plot(resid(lwbs.final.m4), type = "b", xlab = "Observation Number", 
+     ylab = "Residuals", main = "LWBSrate")
+dev.off()
 
 
 
 
 
+
+jpeg("Images/qq.alos.jpg")
+plot(alos.final.m4, which = 2, sub = "", main = "AdmitLOS")
+dev.off()
+
+jpeg("Images/qq.wfb.jpg")
+plot(wfb.final.m4, which = 2, sub = "", main = "WaitForBed")
+dev.off()
+
+jpeg("Images/qq.nlos.jpg")
+plot(nlos.final.m4, which = 2, sub = "", main = "NonAdmitLOS")
+dev.off()
+
+jpeg("Images/qq.mhlos.jpg")
+plot(mhlos.final.m4, which = 2, sub = "", main = "MHLOS")
+dev.off()
+
+jpeg("Images/qq.lwbs.jpg")
+qqnorm(resid(lwbs.final.m4), sub = "", main = "LWBSrate")
+qqline(resid(lwbs.final.m4), lwd = 1, lty = 3)
+dev.off()
 

@@ -102,20 +102,31 @@ resp.labels <- c("Model 1: Race Only", "Model 2: Race + Demographics", "Model 3:
                  "Model 4: Race + Demographics + Hospital Info")
 tab_model(alos.final.m1, alos.final.m2, alos.final.m3, alos.final.m4, transform = "exp",
           show.intercept = F, p.style = "star",
-          show.ci = F, title = "ED LOS: Admitted Patients - Gamma GLM",
-          dv.labels = resp.labels)
+          show.ci = F, title = "ED LOS: Admitted Patients - Gamma GLM with Log Link",
+          dv.labels = resp.labels, CSS = list(
+            css.summary = 'text-align: center;'
+          ))
 tab_model(wfb.final.m1, wfb.final.m2, wfb.final.m3, wfb.final.m4, transform = "exp",
           show.intercept = F, p.style = "star",
-          show.ci = F, title = "Time Spent Waiting for Inpatient Bed - Negative Binomial GLM",
-          dv.labels = resp.labels)
+          show.ci = F, title = "Time Spent Waiting for Inpatient Bed - Negative Binomial GLM with Log Link",
+          dv.labels = resp.labels, string.est = "Estimates", CSS = list(
+            css.summary = 'text-align: center;'
+          ))
 tab_model(nlos.final.m1, nlos.final.m2, nlos.final.m3, nlos.final.m4, transform = NULL,
           show.intercept = F, p.style = "star", dv.labels = resp.labels,
-          show.ci = F, title = "ED LOS: Non-Admitted Patients - Gamma GLM")
+          show.ci = F, title = "ED LOS: Non-Admitted Patients - Gamma GLM with Identity Link", CSS = list(
+            css.summary = 'text-align: center;'
+          ))
 tab_model(mhlos.final.m1, mhlos.final.m2, mhlos.final.m3, mhlos.final.m4, transform = "exp",
           show.intercept = F, p.style = "star", dv.labels = resp.labels,
-          show.ci = F, title = "ED LOS: Mental Health Patients - Inverse Gaussian GLM") # Beds not significant
+          show.ci = F, title = "ED LOS: Mental Health Patients - Inverse Gaussian GLM with Log Link",
+          CSS = list(
+            css.summary = 'text-align: center;'
+          )) # Beds not significant
 tab_model(lwbs.final.m1, lwbs.final.m2, lwbs.final.m3, lwbs.final.m4, transform = "exp", 
           show.intercept = F, p.style = "star",
           show.ci = F, dv.labels = resp.labels, 
-          title = "LWBS Rate - Beta Regression with Log Link") # Beds not signifiant
+          title = "LWBS Rate - Beta Regression with Log Link",CSS = list(
+            css.summary = 'text-align: center;'
+          )) # Beds not signifiant
 
