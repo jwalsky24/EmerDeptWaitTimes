@@ -130,3 +130,20 @@ tab_model(lwbs.final.m1, lwbs.final.m2, lwbs.final.m3, lwbs.final.m4, transform 
             css.summary = 'text-align: center;'
           )) # Beds not signifiant
 
+
+nd <- data.frame(ED.Volume = "Low", HospitalRating = mean(na.omit(hospital_data$HospitalRating)),
+                 RuralScore = mean(na.omit(hospital_data$RuralScore)),
+                SexRatio = mean(na.omit(hospital_data$SexRatio)), 
+                MedianAge = mean(na.omit(hospital_data$MedianAge)),
+                MedicaidExpansion = "Yes", 
+                Black = mean(na.omit(hospital_data$Black)), 
+                Hispanic = 0.1,
+                Asian = mean(na.omit(hospital_data$Asian)),
+                NativeAmerican = mean(na.omit(hospital_data$NativeAmerican)),
+                Beds = mean(na.omit(hospital_data$Beds))
+                )
+predict(wfb.final.m4, newdata = nd, type = "response")
+hospital_data$MHLOS
+
+
+coef(mhlos.final.m4)
