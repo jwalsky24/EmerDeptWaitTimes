@@ -412,25 +412,38 @@ dev.off()
 
 
 
+
+
+
+
+
+
 jpeg("Images/resid.alos.jpg")
-plot(alos.final.m4, which = 1, sub = "", main = "AdmitLOS")
+plot(predict(alos.final.m4, type = "response"), residuals(alos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "AdmitLOS")
 dev.off()
 
 jpeg("Images/resid.wfb.jpg")
-plot(wfb.final.m4, which = 1, sub = "", main = "WaitForBed")
+plot(predict(wfb.final.m4, type = "response"), residuals(wfb.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "WaitForBed")
 dev.off()
 
 jpeg("Images/resid.nlos.jpg")
-plot(nlos.final.m4, which = 1, sub = "", main = "NonAdmitLOS")
+plot(predict(nlos.final.m4, type = "response"), residuals(nlos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "NonAdmitLOS")
 dev.off()
 
 jpeg("Images/resid.mhlos.jpg")
-plot(mhlos.final.m4, which = 1, sub = "", main = "MHLOS")
+plot(predict(mhlos.final.m4, type = "response"), residuals(mhlos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "MHLOS")
 dev.off()
 
 jpeg("Images/resid.lwbs.jpg")
-plot(lwbs.final.m4, which = 4, sub = "", main = "LWBSrate")
+plot(predict(lwbs.final.m4, type = "response"), residuals(lwbs.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "LWBSrate")
 dev.off()
+
+
 
 jpeg("Images/order.alos.jpg")
 plot(resid(alos.final.m4), type = "b", xlab = "Observation Number", 
@@ -463,23 +476,36 @@ dev.off()
 
 
 jpeg("Images/qq.alos.jpg")
-plot(alos.final.m4, which = 2, sub = "", main = "AdmitLOS")
+qqPlot(resid(alos.final.m4) / sd(alos.final.m4$residuals), dist = "gamma", 
+       shape = as.numeric(MASS::gamma.shape(alos.final.m4)[1]),
+       main = "AdmitLOS - Gamma Distribution", xlab = "Gamma Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
 dev.off()
 
 jpeg("Images/qq.wfb.jpg")
-plot(wfb.final.m4, which = 2, sub = "", main = "WaitForBed")
+qqPlot(resid(wfb.final.m4), "nbinom", size = wfb.final.m4$theta, 
+       mu = exp(coef(wfb.final.m4)[1]),
+       main = "WaitForBed - Negative Binomial Distribution", xlab = "Negative Binomial Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
 dev.off()
 
 jpeg("Images/qq.nlos.jpg")
-plot(nlos.final.m4, which = 2, sub = "", main = "NonAdmitLOS")
+qqPlot(resid(nlos.final.m4) / sd(resid(nlos.final.m4)), dist = "gamma", shape = as.numeric(MASS::gamma.shape(nlos.final.m4)[1]),
+       main = "NonAdmitLOS - Gamma Distribution", xlab = "Gamma Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
 dev.off()
 
 jpeg("Images/qq.mhlos.jpg")
-plot(mhlos.final.m4, which = 2, sub = "", main = "MHLOS")
+qqPlot(resid(mhlos.final.m4) / sd(resid(mhlos.final.m4)), dist = "invgauss",
+       main = "MHLOS - Inverse Gaussian Distribution", xlab = "Inverse Gaussian Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
 dev.off()
 
 jpeg("Images/qq.lwbs.jpg")
-qqnorm(resid(lwbs.final.m4), sub = "", main = "LWBSrate")
-qqline(resid(lwbs.final.m4), lwd = 1, lty = 3)
+qqPlot(resid(lwbs.final.m4), 
+       dist = "beta", 
+       shape1 = exp(coef(lwbs.final.m4)[1]) * lwbs.final.m4$coefficients$precision, 
+       shape2 = (1 - exp(coef(lwbs.final.m4)[1])) * lwbs.final.m4$coefficients$precision,
+       main = "LWBSrate - Beta Distribution", xlab = "Beta Quantiles", ylab = "Sample Quantiles", envelope = F)
 dev.off()
 

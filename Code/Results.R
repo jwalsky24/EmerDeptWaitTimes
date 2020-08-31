@@ -4,6 +4,7 @@
 library(MASS)
 library(betareg)
 library(sjPlot)
+library(car)
 
 # Read in and format data
 hospital_data <- read.csv("WaitTimeData.csv")
@@ -137,12 +138,12 @@ nd <- data.frame(ED.Volume = "Low", HospitalRating = mean(na.omit(hospital_data$
                 MedianAge = mean(na.omit(hospital_data$MedianAge)),
                 MedicaidExpansion = "Yes", 
                 Black = mean(na.omit(hospital_data$Black)), 
-                Hispanic = 0.1,
-                Asian = mean(na.omit(hospital_data$Asian)),
+                Hispanic = mean(na.omit(hospital_data$Hispanic)),
+                Asian = 0.5,
                 NativeAmerican = mean(na.omit(hospital_data$NativeAmerican)),
                 Beds = mean(na.omit(hospital_data$Beds))
                 )
-predict(wfb.final.m4, newdata = nd, type = "response")
+predict(nlos.final.m4, newdata = nd, type = "response")
 hospital_data$MHLOS
 
 

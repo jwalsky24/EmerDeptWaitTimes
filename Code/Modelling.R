@@ -32,6 +32,7 @@ library(MASS)
 library(betareg)
 library(car)
 
+
 # Read in and format data
 hospital_data <- read.csv("WaitTimeData.csv")
 hospital_data$MedicaidExpansion <- as.factor(hospital_data$MedicaidExpansion)
@@ -790,22 +791,20 @@ m.names <- list(alos.final.m4, wfb.final.m4, nlos.final.m4, mhlos.final.m4, lwbs
 
 # Assessing homoscedasticity with Residuals vs Fitted plots
 # The residuals should exhibit roughly equal spread across the range of the fitted values
-# All at once
-lapply(m.names[1:4], function(x){plot(x, which = 1)})
-plot(lwbs.final.m4, which = 4)
-# Individually
-plot(alos.final.m4, which = 1)
-plot(wfb.final.m4, which = 1)
-plot(nlos.final.m4, which = 1)
-plot(mhlos.final.m4, which = 1)
-plot(lwbs.final.m4, which = 4)
+plot(predict(alos.final.m4, type = "response"), residuals(alos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "AdmitLOS")
+plot(predict(wfb.final.m4, type = "response"), residuals(wfb.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "WaitForBed")
+plot(predict(nlos.final.m4, type = "response"), residuals(nlos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "NonAdmitLOS")
+plot(predict(mhlos.final.m4, type = "response"), residuals(mhlos.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "MHLOS")
+plot(predict(lwbs.final.m4, type = "response"), residuals(lwbs.final.m4, type = "response"),
+     ylab = "Residuals", xlab = "Predicted values", main = "LWBSrate")
 # Residuals appear random across the range of fitted values for all 5 models
 
 # Assessing Independence
 # The ordered residuals should resemble a random scatter of points about the horizontal axis
-# All at once
-lapply(m.names, function(x){plot(resid(x), type = "b")})
-# Individually
 plot(resid(alos.final.m4), type = "b")
 plot(resid(wfb.final.m4), type = "b")
 plot(resid(nlos.final.m4), type = "b")
@@ -814,23 +813,28 @@ plot(resid(lwbs.final.m4), type = "b")
 # Scatter is approximately random for all 5 models
 
 # Assessing linearity on the link scale between predictors and response
-# All at once
-lapply(m.names[1:4], function(x){plot(x, which = 2)})
-qqnorm(resid(lwbs.final.m4))
-qqline(resid(lwbs.final.m4), lwd = 1, lty = 3)
-# Individually
-plot(alos.final.m4, which = 2)
-plot(wfb.final.m4, which = 2)
-plot(nlos.final.m4, which = 2)
-plot(mhlos.final.m4, which = 2)
-qqnorm(resid(lwbs.final.m4))
-qqline(resid(lwbs.final.m4), lwd = 1, lty = 3)
+qqPlot(resid(alos.final.m4) / sd(alos.final.m4$residuals), dist = "gamma", 
+       shape = as.numeric(MASS::gamma.shape(alos.final.m4)[1]),
+       main = "AdmitLOS - Gamma Distribution", xlab = "Gamma Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
+qqPlot(resid(wfb.final.m4), "nbinom", size = wfb.final.m4$theta, 
+       mu = exp(coef(wfb.final.m4)[1]),
+       main = "WaitForBed - Negative Binomial Distribution", xlab = "Negative Binomial Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
+qqPlot(resid(nlos.final.m4) / sd(resid(nlos.final.m4)), dist = "gamma", shape = as.numeric(MASS::gamma.shape(nlos.final.m4)[1]),
+       main = "NonAdmitLOS - Gamma Distribution", xlab = "Gamma Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
+qqPlot(resid(mhlos.final.m4) / sd(resid(mhlos.final.m4)), dist = "invgauss",
+       main = "MHLOS - Inverse Gaussian Distribution", xlab = "Inverse Gaussian Quantiles", 
+       ylab = "Sample Quantiles", envelope = F)
+qqPlot(resid(lwbs.final.m4), 
+       dist = "beta", 
+       shape1 = exp(coef(lwbs.final.m4)[1]) * lwbs.final.m4$coefficients$precision, 
+       shape2 = (1 - exp(coef(lwbs.final.m4)[1])) * lwbs.final.m4$coefficients$precision,
+       main = "LWBSrate - Beta Distribution", xlab = "Beta Quantiles", ylab = "Sample Quantiles", envelope = F)
 # Results mostly hug the horizontal line, heavy skewing at higher values
 
 # Check for multicollinearity
-# All at once
-lapply(m.names, vif)
-# Individually
 vif(alos.final.m4) 
 vif(wfb.final.m4) 
 vif(nlos.final.m4) 
@@ -840,15 +844,15 @@ vif(lwbs.final.m4)
 
 # Partial residual plots (11 plots each)
 # Used to assess linearity for each term in each model
-sapply(c(names(coef(alos.final.m4))[c(2, 6:8, 10:13)], "ED.Volume", "MedicaidExpansion"), 
+sapply(c(names(coef(alos.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(alos.final.m4, x)})
-sapply(c(names(coef(wfb.final.m4))[c(2, 6:8, 10:13)], "ED.Volume", "MedicaidExpansion"), 
+sapply(c(names(coef(wfb.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(wfb.final.m4, x)})
 sapply(c(names(coef(nlos.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(nlos.final.m4, x)})
 sapply(c(names(coef(mhlos.final.m4))[c(5:8, 10:13)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(mhlos.final.m4, x)})
-sapply(names(lwbs.final.m4$model)[2:10], function(x){plot(lwbs.final.m4$model[,x], resid(lwbs.final.m4))})
+sapply(names(lwbs.final.m4$model)[2:11], function(x){plot(lwbs.final.m4$model[,x], resid(lwbs.final.m4))})
 
 
 
