@@ -1,15 +1,14 @@
+# Nonlinear Models of Race-Related Disparities in Emergency Department Length of Stay at U.S. Hospitals
+# Jonathan M. Wall
+# Dissertation, Summer 2020
 
-
-### Build and refine models of LOS / wait time ###
-
-
+### Modeling
 
 ### Outline
-
 # 1. Prep work
+#   - Load necessary libraries
 #   - Read in data
 #   - Format variables
-#   - Load necessary libraries
 # 2. Compare models with different response distributions and link functions
 #   - Build a variety of models 
 #   - Assess models with AIC
@@ -27,22 +26,24 @@
 
 ############################# Read in data, format variables, load necessary libraries ##########################
 
-# Load necessary libraries
-library(MASS)
+### Load necessary libraries
 library(betareg)
 library(car)
+library(MASS)
+library(statmod)
 
+### Read in data
+hospital_data <- read.csv("CleanedData.csv")
 
-# Read in and format data
-hospital_data <- read.csv("WaitTimeData.csv")
+### Format variables
 hospital_data$MedicaidExpansion <- as.factor(hospital_data$MedicaidExpansion)
 hospital_data$ED.Volume <- factor(hospital_data$ED.Volume, levels = c("Low", "Medium", "High", "Very High"))
 
 
 
-################# Inspect response variables to identify approrpriate distributions ########################
+################# Inspect response variables to identify approrpriate distributions #############################
 
-### Distributions to be considered: Gaussian (Normal), Gamma, Poisson, Inverse Gaussian (Wald), Negative Binomial, Beta
+### Distributions to be considered: Gaussian, Gamma, Poisson, Inverse Gaussian, Negative Binomial, Beta
 
 ### Response variable: AdmitLOS
 summary(hospital_data$AdmitLOS)
@@ -96,9 +97,11 @@ hist(na.omit(hospital_data$LWBSrate), breaks = 20)
 
 
 
-#################### Compare models with different response distributions and link functions #######################
+#################### Compare models with different response distributions and link functions ####################
 
-### Response variable: AdmitLOS
+### Build models
+
+## Response variable: AdmitLOS
 # Gaussian
 alos.gaus.id <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                       RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -157,7 +160,7 @@ alos.nb <- glm.nb(AdmitLOS ~ Beds + ED.Volume + HospitalRating +
                     Black + Hispanic + Asian + NativeAmerican, 
                   data = hospital_data, na.action = na.omit)
 
-### Response variable: WaitForBed
+## Response variable: WaitForBed
 # Poisson
 wfb.pois.log <- glm(WaitForBed ~ Beds + ED.Volume + HospitalRating + 
                       RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -166,7 +169,8 @@ wfb.pois.log <- glm(WaitForBed ~ Beds + ED.Volume + HospitalRating +
 wfb.pois.id <- glm(WaitForBed ~ Beds + ED.Volume + HospitalRating + 
                      RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                      Black + Hispanic + Asian + NativeAmerican, 
-                   family = poisson(link = "identity"), data = hospital_data, na.action = na.omit) # Returns error, NaNs produced
+                   family = poisson(link = "identity"), data = hospital_data, na.action = na.omit) 
+# wfb.pois.id returns error, NaNs produced
 wfb.pois.sqrt <- glm(WaitForBed ~ Beds + ED.Volume + HospitalRating + 
                        RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
@@ -177,7 +181,7 @@ wfb.nb <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
                    Black + Hispanic + Asian + NativeAmerican, 
                  data = hospital_data, na.action = na.omit)
 
-### Response variable: NonAdmitLOS
+## Response variable: NonAdmitLOS
 # Gaussian
 nlos.gaus.id <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating + 
                       RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -236,7 +240,7 @@ nlos.nb <- glm.nb(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
                     Black + Hispanic + Asian + NativeAmerican, 
                   data = hospital_data, na.action = na.omit)
 
-### Response variable: MHLOS
+## Response variable: MHLOS
 # Gaussian
 mhlos.gaus.id <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating + 
                        RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -249,7 +253,8 @@ mhlos.gaus.log <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating +
 mhlos.gaus.inv <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating + 
                         RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
                         Black + Hispanic + Asian + NativeAmerican, 
-                      family = gaussian(link = "inverse"), data = hospital_data, na.action = na.omit) # Did not converge
+                      family = gaussian(link = "inverse"), data = hospital_data, na.action = na.omit) 
+# mhlos.gaus.inv does not converge
 # Gamma
 mhlos.gamma.inv <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating + 
                          RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -295,11 +300,11 @@ mhlos.nb <- glm.nb(MHLOS ~ Beds + ED.Volume + HospitalRating +
                      Black + Hispanic + Asian + NativeAmerican, 
                    data = hospital_data, na.action = na.omit)
 
-### Response variable: LWBSrate
+## Response variable: LWBSrate
 # Beta Regression
 # Adjust LWBSrate so values are within (0,1) (Smithson and Verkuilen, 2006)
-hospital_data$LWBSrateAdjusted <- (hospital_data$LWBSrate * (length(na.omit(hospital_data$LWBSrate)) - 1) + 0.5) / 
-  length(na.omit(hospital_data$LWBSrate))
+hospital_data$LWBSrateAdjusted <- (hospital_data$LWBSrate * (length(na.omit(hospital_data$LWBSrate)) - 1) +
+                                   0.5) / length(na.omit(hospital_data$LWBSrate))
 # Construct Beta models with different link functions
 lwbs.beta.logit <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating + 
                        RuralScore + MedianAge + SexRatio + MedicaidExpansion + 
@@ -332,9 +337,9 @@ lwbs.beta.cauchit <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRatin
                             data = hospital_data, na.action = na.omit)
 
 
-##### Assess models with AIC
+### Compare models with AIC
 
-# Assess AdmitLOS models
+# Compare AdmitLOS models
 alosmodels <- AIC(alos.gaus.id, alos.gaus.log, alos.gaus.inv, 
                   alos.gamma.inv, alos.gamma.id, alos.gamma.log,
                   alos.pois.log, alos.pois.id, alos.pois.sqrt,
@@ -344,16 +349,16 @@ alosmodels$AIC <- alosmodels$AIC - min(alosmodels$AIC)
 alos.AIC <- alosmodels[order(alosmodels$AIC),]
 alos.AIC
 # Best model: Gamma with inverse and log links are very similar.
-#             We choose log link due to ease of interpretation.
+#             Log link chosen due to ease of interpretation.
 
-# Assess valid WaitForBed models (wfb.pois.id returned error)
+# Compare valid WaitForBed models (wfb.pois.id returned error)
 wfbmodels <- AIC(wfb.pois.log, wfb.pois.sqrt, wfb.nb)
 wfbmodels$AIC <- wfbmodels$AIC - min(wfbmodels$AIC)
 wfb.AIC <- wfbmodels[order(wfbmodels$AIC),]
 wfb.AIC
 # Best model: Negative Binomial
 
-# Assess NonAdmitLOS models
+# Compare NonAdmitLOS models
 nlosmodels <- AIC(nlos.gaus.id, nlos.gaus.log, nlos.gaus.inv, 
                   nlos.gamma.inv, nlos.gamma.id, nlos.gamma.log, 
                   nlos.pois.log, nlos.pois.id, nlos.pois.sqrt,
@@ -364,7 +369,7 @@ nlos.AIC <- nlosmodels[order(nlosmodels$AIC),]
 nlos.AIC
 # Best model: Gamma with no link
 
-# Assess valid MHLOS models (mhlos.gaus.inv did not converge)
+# Compare valid MHLOS models (mhlos.gaus.inv did not converge)
 mhlosmodels <- AIC(mhlos.gaus.id, mhlos.gaus.log, 
                    mhlos.gamma.inv, mhlos.gamma.id, mhlos.gamma.log, 
                    mhlos.pois.log, mhlos.pois.id, mhlos.pois.sqrt,
@@ -375,17 +380,17 @@ mhlos.AIC <- mhlosmodels[order(mhlosmodels$AIC),]
 mhlos.AIC
 # Best model: Inverse Gaussian with log link
 
-# Assess LWBSrateAdjusted model
+# Compare LWBSrateAdjusted model
 lwbsmodels <- AIC(lwbs.beta.logit, lwbs.beta.probit, lwbs.beta.log, 
                   lwbs.beta.loglog, lwbs.beta.cloglog, lwbs.beta.cauchit)
 lwbsmodels$AIC <- lwbsmodels$AIC - min(lwbsmodels$AIC)
 lwbs.AIC <- lwbsmodels[order(lwbsmodels$AIC),]
 lwbs.AIC
 # Best model: All models very similar except cauchit.
-#             We choose log link due to ease of interpretation.
+#             Log link chosen due to ease of interpretation.
 
 
-##### Summary of best models
+### Summary of best models
 
 # AdmitLOS: Gamma with log link
 # WaitForBed: Negative Binomial
@@ -397,9 +402,9 @@ lwbs.AIC
 
 ###################### Fit appropriate models to data, with and without adjustment for covariates ###################
 
-##### Fit appropriate models 
+### Fit appropriate models 
 
-### Response variable: AdmitLOS
+## Response variable: AdmitLOS
 # Race covariates only
 alos.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
@@ -417,7 +422,7 @@ alos.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating +
                  Black + Hispanic + Asian + NativeAmerican, 
                family = Gamma(link = "log"), data = hospital_data, na.action = na.omit)
 
-### Response variable: WaitForBed
+## Response variable: WaitForBed
 # Race covariates only
 wfb.m1 <- glm.nb(WaitForBed ~ Black + Hispanic + Asian + NativeAmerican, 
                            data = hospital_data, na.action = na.omit)
@@ -435,7 +440,7 @@ wfb.m4 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
                Black + Hispanic + Asian + NativeAmerican, 
              data = hospital_data, na.action = na.omit)
 
-### Response variable: NonAdmitLOS
+## Response variable: NonAdmitLOS
 # Race covariates only
 nlos.m1 <- glm(NonAdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                family = Gamma(link = "identity"), data = hospital_data, na.action = na.omit)
@@ -453,7 +458,7 @@ nlos.m4 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
                  Black + Hispanic + Asian + NativeAmerican, 
                family = Gamma(link = "identity"), data = hospital_data, na.action = na.omit)
 
-### Response variable: MHLOS
+## Response variable: MHLOS
 # Race covariates only
 mhlos.m1 <- glm(MHLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                     family = inverse.gaussian(link = "log"), data = hospital_data, na.action = na.omit)
@@ -471,7 +476,7 @@ mhlos.m4 <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating +
                       Black + Hispanic + Asian + NativeAmerican, 
                     family = inverse.gaussian(link = "log"), data = hospital_data, na.action = na.omit)
 
-### Response variable: LWBSrate (adjusted)
+## Response variable: LWBSrate (adjusted)
 # Race covariates only
 lwbs.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
                                 link = "log", data = hospital_data, na.action = na.omit)
@@ -491,19 +496,19 @@ lwbs.m4 <- betareg(LWBSrateAdjusted ~ Beds + ED.Volume + HospitalRating +
 
 
 
-####################################### Identify and remove outliers #####################################
+########################################## Identify and remove outliers ########################################
 
-### Inspect Cook's Distance plots, remove observations with CD > 0.5
+### Inspect Cook's Distance plots, remove observations with Cook's Distance greater than 0.5
 plot(alos.m1, which = 4)
 plot(alos.m2, which = 4)
 plot(alos.m3, which = 4)
 plot(alos.m4, which = 4)
 plot(wfb.m1, which = 4) 
-plot(wfb.m2, which = 4) # Remove 732
+plot(wfb.m2, which = 4) # Remove Observation 732
 plot(wfb.m3, which = 4) 
 plot(wfb.m4, which = 4) 
-plot(nlos.m1, which = 4) # Remove 160
-plot(nlos.m2, which = 4) # Remove 160
+plot(nlos.m1, which = 4) # Remove Observation 160
+plot(nlos.m2, which = 4) # Remove Observation 160
 plot(nlos.m3, which = 4)
 plot(nlos.m4, which = 4)
 plot(mhlos.m1, which = 4)
@@ -516,29 +521,29 @@ plot(lwbs.m3, which = 2)
 plot(lwbs.m4, which = 2)
 
 ### Outlier tests with strict cutoff (0.005)
-outlierTest(alos.m1, cutoff = 0.005) # Remove 425
-outlierTest(alos.m2, cutoff = 0.005) # Remove 425
-outlierTest(alos.m3, cutoff = 0.005) # Remove 425, 1041
-outlierTest(alos.m4, cutoff = 0.005) # Remove 425, 2796 plus 1041
+outlierTest(alos.m1, cutoff = 0.005) # Remove Observation 425
+outlierTest(alos.m2, cutoff = 0.005) # Remove Observation 425
+outlierTest(alos.m3, cutoff = 0.005) # Remove Observations 425 and 1041
+outlierTest(alos.m4, cutoff = 0.005) # Remove Observations 425, 2796 and 1041
 outlierTest(wfb.m1, cutoff = 0.005) 
-outlierTest(wfb.m2, cutoff = 0.005) # Remove 425
-outlierTest(wfb.m3, cutoff = 0.005) # Remove 425, 3611, 3365
-outlierTest(wfb.m4, cutoff = 0.005) # Remove 425, 3611, 3365, 2344
-outlierTest(nlos.m1, cutoff = 0.005) # Remove 160 
-outlierTest(nlos.m2, cutoff = 0.005) # Remove 160
+outlierTest(wfb.m2, cutoff = 0.005) # Remove Observation 425
+outlierTest(wfb.m3, cutoff = 0.005) # Remove Observations 425, 3611, 3365
+outlierTest(wfb.m4, cutoff = 0.005) # Remove Observations 425, 3611, 3365, 2344
+outlierTest(nlos.m1, cutoff = 0.005) # Remove Observation 160 
+outlierTest(nlos.m2, cutoff = 0.005) # Remove Observation 160
 outlierTest(nlos.m3, cutoff = 0.005) 
 outlierTest(nlos.m4, cutoff = 0.005) 
-outlierTest(mhlos.m1, cutoff = 0.005) # Remove 2684, 3314, 1689
-outlierTest(mhlos.m2, cutoff = 0.005) # Remove 2684, 3314, 2735, 2681
-outlierTest(mhlos.m3, cutoff = 0.005) # Remove 2684, 3314, 2735
-outlierTest(mhlos.m4, cutoff = 0.005) # Remove 2684, 3314, 2735, 2681
-# Since outlierTest only works on glm objects, we inspect the top 10 outliers and their fitted values
-head(sort(lwbs.m1$residuals, decreasing = T), n = 10) # Remove 1475
-head(sort(lwbs.m2$residuals, decreasing = T), n = 10) # Remove 1475
-head(sort(lwbs.m3$residuals, decreasing = T), n = 10) # Remove 1475
-head(sort(lwbs.m2$residuals, decreasing = T), n = 10) # Remove 1475
+outlierTest(mhlos.m1, cutoff = 0.005) # Remove Observations 2684, 3314 and 1689
+outlierTest(mhlos.m2, cutoff = 0.005) # Remove Observations 2684, 3314, 2735 and 2681
+outlierTest(mhlos.m3, cutoff = 0.005) # Remove Observations 2684, 3314 and 2735
+outlierTest(mhlos.m4, cutoff = 0.005) # Remove Observations 2684, 3314, 2735 and 2681
+# Since outlierTest only works for "glm" objects, we inspect the top 10 outliers and their fitted values
+head(sort(lwbs.m1$residuals, decreasing = T), n = 10) # Remove Observation 1475
+head(sort(lwbs.m2$residuals, decreasing = T), n = 10) # Remove Observation 1475
+head(sort(lwbs.m3$residuals, decreasing = T), n = 10) # Remove Observation 1475
+head(sort(lwbs.m2$residuals, decreasing = T), n = 10) # Remove Observation 1475
 
-### Create new data sets for analaysis with outliers removed
+### Create new datasets with outliers removed
 hospital_data.alos.m1 <- hospital_data[-c(425),]
 hospital_data.alos.m2 <- hospital_data[-c(425),]
 hospital_data.alos.m3 <- hospital_data[-c(425, 1041),]
@@ -564,7 +569,7 @@ hospital_data.lwbs.m4 <- hospital_data[-c(1475),]
 
 ########################################## Construct models with outliers removed #############################
 
-### Response variable: AdmitLOS
+## Response variable: AdmitLOS
 # Race covariates only
 alos.or.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                   family = Gamma(link = "log"), data = hospital_data.alos.m1, na.action = na.omit)
@@ -582,7 +587,7 @@ alos.or.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating +
                     Black + Hispanic + Asian + NativeAmerican, 
                   family = Gamma(link = "log"), data = hospital_data.alos.m4, na.action = na.omit)
 
-### Response variable: WaitForBed
+## Response variable: WaitForBed
 # Race covariates only
 wfb.or.m1 <- glm.nb(WaitForBed ~ Black + Hispanic + Asian + NativeAmerican, 
                     data = hospital_data.wfb.m1, na.action = na.omit)
@@ -600,7 +605,7 @@ wfb.or.m4 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
                       Black + Hispanic + Asian + NativeAmerican, 
                     data = hospital_data.wfb.m4, na.action = na.omit)
 
-### Response variable: NonAdmitLOS
+## Response variable: NonAdmitLOS
 # Race covariates only
 nlos.or.m1 <- glm(NonAdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                   family = Gamma(link = "identity"), data = hospital_data.nlos.m1, na.action = na.omit)
@@ -618,7 +623,7 @@ nlos.or.m4 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
                     Black + Hispanic + Asian + NativeAmerican, 
                   family = Gamma(link = "identity"), data = hospital_data.nlos.m4, na.action = na.omit)
 
-### Response variable: MHLOS
+## Response variable: MHLOS
 # Race covariates only
 mhlos.or.m1 <- glm(MHLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                    family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m1, na.action = na.omit)
@@ -636,7 +641,7 @@ mhlos.or.m4 <- glm(MHLOS ~ Beds + ED.Volume + HospitalRating +
                      Black + Hispanic + Asian + NativeAmerican, 
                    family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m4, na.action = na.omit)
 
-### Response variable: LWBSrate (adjusted)
+## Response variable: LWBSrate (adjusted)
 # Race covariates only
 lwbs.or.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
                       link = "log", data = hospital_data.lwbs.m1, na.action = na.omit)
@@ -692,7 +697,7 @@ summary(lwbs.or.m4)
 
 ####################### Construct final models with insignificant covariates removed ##############################
 
-### AdmitLOS
+## AdmitLOS
 # Race covariates only
 alos.final.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "log"), data = hospital_data.alos.m1, na.action = na.omit)
@@ -710,7 +715,7 @@ alos.final.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating +
                        Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "log"), data = hospital_data.alos.m4, na.action = na.omit)
 
-### WaitForBed
+## WaitForBed
 # Race covariates only
 wfb.final.m1 <- glm.nb(WaitForBed ~ Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m1, na.action = na.omit)
@@ -728,7 +733,7 @@ wfb.final.m4 <- glm.nb(WaitForBed ~ Beds + ED.Volume + HospitalRating +
                          Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m4, na.action = na.omit)
 
-### NonAdmitLOS
+## NonAdmitLOS
 # Race covariates only
 nlos.final.m1 <- glm(NonAdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m1, na.action = na.omit)
@@ -746,7 +751,7 @@ nlos.final.m4 <- glm(NonAdmitLOS ~ Beds + ED.Volume + HospitalRating +
                        Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "identity"), data = hospital_data.nlos.m4, na.action = na.omit)
 
-### MHLOS
+## MHLOS
 # Race covariates only
 mhlos.final.m1 <- glm(MHLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m1, na.action = na.omit)
@@ -764,7 +769,7 @@ mhlos.final.m4 <- glm(MHLOS ~ ED.Volume + HospitalRating +
                         Black + Hispanic + Asian + NativeAmerican, 
                       family = inverse.gaussian(link = "log"), data = hospital_data.mhlos.m4, na.action = na.omit)
 
-### LWBSrateAdjusted
+## LWBSrateAdjusted
 # Race covariates only
 lwbs.final.m1 <- betareg(LWBSrateAdjusted ~ Black + Hispanic + Asian + NativeAmerican, 
                          link = "log", data = hospital_data.lwbs.m1, na.action = na.omit)
@@ -786,10 +791,11 @@ lwbs.final.m4 <- betareg(LWBSrateAdjusted ~ ED.Volume + HospitalRating +
 
 ###################################### Model Diagnostics ##########################################
 
-# Vector of model names
+### Create vector of model names
 m.names <- list(alos.final.m4, wfb.final.m4, nlos.final.m4, mhlos.final.m4, lwbs.final.m4)
 
-# Assessing homoscedasticity with Residuals vs Fitted plots
+### Assessing the appropriateness of each mean-variance relationship with 
+### Residuals vs Fitted plots and Q-Q plots
 # The residuals should exhibit roughly equal spread across the range of the fitted values
 plot(predict(alos.final.m4, type = "response"), residuals(alos.final.m4, type = "response"),
      ylab = "Residuals", xlab = "Predicted values", main = "AdmitLOS")
@@ -802,17 +808,6 @@ plot(predict(mhlos.final.m4, type = "response"), residuals(mhlos.final.m4, type 
 plot(predict(lwbs.final.m4, type = "response"), residuals(lwbs.final.m4, type = "response"),
      ylab = "Residuals", xlab = "Predicted values", main = "LWBSrate")
 # Residuals appear random across the range of fitted values for all 5 models
-
-# Assessing Independence
-# The ordered residuals should resemble a random scatter of points about the horizontal axis
-plot(resid(alos.final.m4), type = "b")
-plot(resid(wfb.final.m4), type = "b")
-plot(resid(nlos.final.m4), type = "b")
-plot(resid(mhlos.final.m4), type = "b")
-plot(resid(lwbs.final.m4), type = "b")
-# Scatter is approximately random for all 5 models
-
-# Assessing linearity on the link scale between predictors and response
 qqPlot(resid(alos.final.m4) / sd(alos.final.m4$residuals), dist = "gamma", 
        shape = as.numeric(MASS::gamma.shape(alos.final.m4)[1]),
        main = "AdmitLOS - Gamma Distribution", xlab = "Gamma Quantiles", 
@@ -834,16 +829,17 @@ qqPlot(resid(lwbs.final.m4),
        main = "LWBSrate - Beta Distribution", xlab = "Beta Quantiles", ylab = "Sample Quantiles", envelope = F)
 # Results mostly hug the horizontal line, heavy skewing at higher values
 
-# Check for multicollinearity
-vif(alos.final.m4) 
-vif(wfb.final.m4) 
-vif(nlos.final.m4) 
-vif(mhlos.final.m4) 
-vif(lwbs.final.m4) 
-# No issues here - Max VIF is 2.72 for ED.Volume
+### Assessing Independence
+# The ordered residuals should resemble a random scatter of points about the horizontal axis
+plot(resid(alos.final.m4), type = "b")
+plot(resid(wfb.final.m4), type = "b")
+plot(resid(nlos.final.m4), type = "b")
+plot(resid(mhlos.final.m4), type = "b")
+plot(resid(lwbs.final.m4), type = "b")
+# Scatter is approximately random for all 5 models
 
+### Assessing linearity on the link scale between predictors and response
 # Partial residual plots (11 plots each)
-# Used to assess linearity for each term in each model
 sapply(c(names(coef(alos.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(alos.final.m4, x)})
 sapply(c(names(coef(wfb.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExpansion"), 
@@ -853,6 +849,14 @@ sapply(c(names(coef(nlos.final.m4))[c(2, 6:9, 11:14)], "ED.Volume", "MedicaidExp
 sapply(c(names(coef(mhlos.final.m4))[c(5:8, 10:13)], "ED.Volume", "MedicaidExpansion"), 
        function(x){crPlot(mhlos.final.m4, x)})
 sapply(names(lwbs.final.m4$model)[2:11], function(x){plot(lwbs.final.m4$model[,x], resid(lwbs.final.m4))})
+
+### Check for multicollinearity
+vif(alos.final.m4) 
+vif(wfb.final.m4) 
+vif(nlos.final.m4) 
+vif(mhlos.final.m4) 
+vif(lwbs.final.m4) 
+# No issues here - Max VIF is 2.77 for ED.Volume
 
 
 
@@ -889,5 +893,4 @@ summary(lwbs.final.m3)
 summary(lwbs.final.m4)
 
 
-
-
+### End of file ###

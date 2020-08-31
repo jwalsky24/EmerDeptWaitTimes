@@ -1,11 +1,11 @@
+# Nonlinear Models of Race-Related Disparities in Emergency Department Length of Stay at U.S. Hospitals
+# Jonathan M. Wall
+# Dissertation, Summer 2020
 
+### Image Creation
+### This file creates and saves images for use in write-up
 
-
-
-
-
-
-# Response variables
+### Study Outcome Variables
 jpeg("Images/AdmitLOS.jpg")
 truehist(hospital_data$AdmitLOS / 60, prob = F, xlim = c(0,14), xlab = "Time (Hours)", 
          ylab = "Number of Hospitals", main = "AdmitLOS", col = "#696969")
@@ -32,12 +32,7 @@ truehist(hospital_data$LWBSrate * 100, prob = F, xlim = c(0,12), xlab = "Percent
 dev.off()
 
 
-
-
-
-
-
-# Race covariates
+### Race/Ethnicity Variables
 jpeg("Images/Asian.jpg")
 truehist(hospital_data$Asian * 100, main = "% of Asian / Pacific Islander Patients served", 
          xlab = "Percentage", ylab = "Number of Hospitals", xlim = c(0, 40), prob = F)
@@ -64,25 +59,21 @@ truehist(hospital_data$White * 100, main = "% of White Patients served",
 dev.off()
 
 
-# Demographic covariates
-
+### Demographic Variables
 jpeg("Images/RuralScore.jpg")
 hist(na.omit(hospital_data$RuralScore) * 100, col = 5, breaks = 50, main = "% of Patients from Rural area", 
      xlab = "Percentage", ylab = "Number of Hospitals")
 dev.off()
-
 
 jpeg("Images/MedianAge.jpg")
 truehist(hospital_data$MedianAge, main = "Median Age of Patients Served", 
          xlab = "Age", ylab = "Number of Hospitals", prob = F)
 dev.off()
 
-
 jpeg("Images/SexRatio.jpg")
 truehist(hospital_data$SexRatio, main = "Sex Ratio (Men per 100 Women)",
          xlab = "Men per 100 Women", ylab = "Number of Hospitals", xlim = c(60, 150), prob = F)
 dev.off()
-
 
 jpeg("Images/MedicaidExpansion.jpg")
 medex.plot1 <- plot(na.omit(hospital_data$MedicaidExpansion), 
@@ -93,13 +84,11 @@ text(x = medex.plot1, y = table(hospital_data$MedicaidExpansion),
                                           length(hospital_data$MedicaidExpansion), 1)), "%"), pos = 3)
 dev.off()
 
-# Hospital-level covariates
-
+# Hospital-Level Variables
 jpeg("Images/Beds.jpg")
 truehist(hospital_data$Beds, xlim = c(0, 1500), main = "Beds per Hospital", 
          xlab = "Beds", ylab = "Number of Hospitals", prob = F)
 dev.off()
-
 
 jpeg("Images/Rating.jpg")
 rating.plot1 <- plot(na.omit(as.factor(hospital_data$HospitalRating)), col = rating.colors, 
@@ -108,7 +97,6 @@ text(x = rating.plot1, y = table(as.factor(hospital_data$HospitalRating)),
      labels = paste0(as.character(round(table(hospital_data$HospitalRating) * 100 / 
                                           length(hospital_data$HospitalRating), 1)), "%"), pos = 3)
 dev.off()
-
 
 jpeg("Images/Volume.jpg")
 volume.plot1 <- plot(na.omit(hospital_data$ED.Volume), col = volume.colors, ylim = c(0, 2000),
@@ -119,9 +107,7 @@ text(x = volume.plot1, y = table(hospital_data$ED.Volume),
 dev.off()
 
 
-
-
-
+### AdmitLOS
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 jpeg("Images/AdmitLOS_main.jpg")
 truehist(hospital_data$AdmitLOS / 60, prob = F, xlim = c(0,14), xlab = "Time (Hours)", 
@@ -178,9 +164,7 @@ mtext(side = 4, line = 2.75, "% of Patients from Rural area")
 dev.off()
 
 
-
-
-
+### WaitForBed
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 jpeg("Images/WaitForBed_main.jpg")
 truehist(hospital_data$WaitForBed / 60, prob = F, xlim = c(0,8.5), xlab = "Time (Hours)", 
@@ -237,8 +221,7 @@ mtext(side = 4, line = 2.75, "% of Patients from Rural area")
 dev.off()
 
 
-
-
+### NonAdmitLOS
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 jpeg("Images/NonAdmitLOS_main.jpg")
 truehist(hospital_data$NonAdmitLOS / 60, prob = F, xlim = c(0,6), xlab = "Time (Hours)", 
@@ -295,7 +278,7 @@ mtext(side = 4, line = 2.75, "% of Patients from Rural area")
 dev.off()
 
 
-
+### MHLOS
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 jpeg("Images/MHLOS_main.jpg")
 truehist(hospital_data$MHLOS /60, prob = F, xlim = c(0,18),  xlab = "Time (Hours)", 
@@ -352,9 +335,7 @@ mtext(side = 4, line = 2.75, "% of Patients from Rural area")
 dev.off()
 
 
-
-
-
+### LWBSrate
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 jpeg("Images/LWBSrate_main.jpg")
 truehist(hospital_data$LWBSrate * 100, prob = F, xlim = c(0,12), xlab = "Percentage", h = 1,
@@ -411,13 +392,7 @@ mtext(side = 4, line = 2.75, "% of Patients from Rural area")
 dev.off()
 
 
-
-
-
-
-
-
-
+### Residuals vs Fitted Plots
 jpeg("Images/resid.alos.jpg")
 plot(predict(alos.final.m4, type = "response"), residuals(alos.final.m4, type = "response"),
      ylab = "Residuals", xlab = "Predicted values", main = "AdmitLOS")
@@ -444,7 +419,7 @@ plot(predict(lwbs.final.m4, type = "response"), residuals(lwbs.final.m4, type = 
 dev.off()
 
 
-
+### Residuals vs Run Order Plots
 jpeg("Images/order.alos.jpg")
 plot(resid(alos.final.m4), type = "b", xlab = "Observation Number", 
      ylab = "Residuals", main = "AdmitLOS")
@@ -471,10 +446,7 @@ plot(resid(lwbs.final.m4), type = "b", xlab = "Observation Number",
 dev.off()
 
 
-
-
-
-
+### Q-Q Plots
 jpeg("Images/qq.alos.jpg")
 qqPlot(resid(alos.final.m4) / sd(alos.final.m4$residuals), dist = "gamma", 
        shape = as.numeric(MASS::gamma.shape(alos.final.m4)[1]),
@@ -509,3 +481,5 @@ qqPlot(resid(lwbs.final.m4),
        main = "LWBSrate - Beta Distribution", xlab = "Beta Quantiles", ylab = "Sample Quantiles", envelope = F)
 dev.off()
 
+
+### End of file ###

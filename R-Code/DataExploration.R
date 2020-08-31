@@ -1,18 +1,24 @@
+# Nonlinear Models of Race-Related Disparities in Emergency Department Length of Stay at U.S. Hospitals
+# Jonathan M. Wall
+# Dissertation, Summer 2020
 
+### Data Exploration
+### This file conducts exploratory data analysis, examines missing data, and produces tables and figures
 
-### Prepare data
-# Load necessary libraries
-library(tidyverse)
+### Load necessary libraries
 library(descr)
-library(knitr)
-library(RColorBrewer)
-library(MASS)
-library(kableExtra)
-library(magick)
 library(htmlTable)
+library(kableExtra)
+library(knitr)
+library(magick)
+library(MASS)
+library(RColorBrewer)
+library(tidyverse)
 
-### Read in and format data
-hospital_data <- read.csv("WaitTimeData.csv")
+### Read in data
+hospital_data <- read.csv("CleanedData.csv")
+
+### Format variables
 hospital_data$MedicaidExpansion <- factor(hospital_data$MedicaidExpansion, levels = c("Yes", "No"))
 hospital_data$ED.Volume <- factor(hospital_data$ED.Volume, levels = c("Low", "Medium", "High", "Very High"))
 hospital_data$UrbanFlag <- ifelse(hospital_data$RuralScore > 0.5, "0", "1")
@@ -62,7 +68,6 @@ state.summaries <- data.frame(
             LWBSpercent = round(mean(LWBSrate * 100, na.rm = T), digits = 2),
             MeanRating = round(mean(HospitalRating, na.rm = T), 2)))
 
-
 ### Correlations
 # Inspect correlations between numeric variables
 corrs <- round(cor(hospital_data[,c(2:12, 15:18)], use = "pairwise.complete.obs"), digits = 3)
@@ -91,7 +96,6 @@ truehist(hospital_data$NativeAmerican * 100, main = "% of Native American Patien
          xlab = "Percentage", ylab = "Number of Hospitals", xlim = c(0, 30), prob = F)
 truehist(hospital_data$White * 100, main = "% of White Patients served", 
          xlab = "Percentage", ylab = "Number of Hospitals", prob = F)
-
 # Demographic covariates
 hist(na.omit(hospital_data$RuralScore) * 100, col = 5, breaks = 50, main = "% of Patients from Rural area", 
      xlab = "Percentage", ylab = "Number of Hospitals")
@@ -121,14 +125,6 @@ text(x = volume.plot1, y = table(hospital_data$ED.Volume),
 
 
 ### Plots of response variables by covariates
-
-# Race scatterplots
-
-alos.black <- subset(hospital_data[,c(2,8)], complete.cases(hospital_data[,c(2,8)]))
-plot(alos.black$Black, alos.black$AdmitLOS)
-abline(lm(AdmitLOS ~ Black, data = alos.black), col = "red", lwd = 2)
-
-
 # Emergency Department Volume
 boxplot(AdmitLOS / 60 ~ ED.Volume, data = hospital_data, ylim = c(0, 1000 / 60), col = volume.colors, 
         ylab = "ED LOS: Admitted Patients (Hours)", main = "AdmitLOS by Emergency Department Volume", xlab = "")
@@ -162,7 +158,7 @@ boxplot(MHLOS / 60 ~ UrbanFlag, data = hospital_data, ylim = c(0,1000 / 60), col
         ylab = "ED LOS: Mental Health Patients (Hours)", main = "MHLOS by Population Served", xlab = "")
 boxplot(LWBSrate * 100 ~ UrbanFlag, data = hospital_data, ylim = c(0,10), col = rural.colors, 
         ylab = "% of Patients who left ED without being seen", main = "LWBSrate by Population Served", xlab = "")
-# Is Hospital in State that expanded Medicaid?
+# Is hospital located in State that expanded Medicaid?
 boxplot(AdmitLOS / 60 ~ MedicaidExpansion, data = hospital_data, ylim = c(0, 900 / 60), 
         col = medex.colors, ylab = "ED LOS: Admitted Patients (Hours)", 
         main = "AdmitLOS by Medicaid Expansion Status", xlab = "")
@@ -212,15 +208,14 @@ boxplot(LWBSrate * 100 ~ AgeFlag, data = hospital_data, ylim = c(0, 10), col = a
         main = "LWBSrate by Median Age of Patients Served", xlab = "")
 
 
-
 ### Exploring NA values
-
-# Read in and format data
+# Read in data
 raw_data <- read.csv("RawData.csv")
+# Format variables
 raw_data$MedicaidExpansion <- as.factor(raw_data$MedicaidExpansion)
 raw_data$ED.Volume <- factor(raw_data$ED.Volume, levels = c("Low", "Medium", "High", "Very High"))
 raw_data
-
+# Build data subsets
 alos.na <- raw_data[is.na(raw_data$AdmitLOS),]
 wfb.na <- raw_data[is.na(raw_data$WaitForBed),]
 nlos.na <- raw_data[is.na(raw_data$NonAdmitLOS),]
@@ -231,7 +226,6 @@ rating.na <- raw_data[is.na(raw_data$HospitalRating),]
 beds.na <- raw_data[is.na(raw_data$Beds),]
 na.data <- list(alos.na, wfb.na, nlos.na, mhlos.na, 
                 lwbs.na, volume.na, rating.na, beds.na)
-
 alos.valid <- raw_data[!is.na(raw_data$AdmitLOS),]
 wfb.valid <- raw_data[!is.na(raw_data$WaitForBed),]
 nlos.valid <- raw_data[!is.na(raw_data$NonAdmitLOS),]
@@ -242,21 +236,16 @@ rating.valid <- raw_data[!is.na(raw_data$HospitalRating),]
 beds.valid <- raw_data[!is.na(raw_data$Beds),]
 valid.data <- list(alos.valid, wfb.valid, nlos.valid, mhlos.valid, 
                    lwbs.valid, volume.valid, rating.valid, beds.valid)
-
-# Table of missing data rates
+# Build tables of missing data rates
 missing.rates <- data.frame(Variable = names(raw_data)[c(2:6, 19, 7, 18)], 
                       Valid = sapply(valid.data, nrow),      
                       NAtotal = sapply(na.data, nrow),
                       NApercent = round(sapply(na.data, function(x){nrow(x) * 100 / nrow(hospital_data)}), digits = 1))
 colnames(missing.rates) <- c("Variable", "N (Valid)","N (Missing)", "% Missing")
-
-
-# Missing data tend to come from small, rural hospitals
 hosp.nas <- rbind(Missing.ru = round(sapply(na.data, function(x){mean(na.omit(x$RuralScore))}), digits = 2) * 200, 
            Valid.ru = round(sapply(valid.data, function(x){mean(na.omit(x$RuralScore))}), digits = 2) * 200,
            Missing.bed = round(sapply(na.data, function(x){mean(na.omit(x$Beds))}), digits = 2), 
            Valid.bed = round(sapply(valid.data, function(x){mean(na.omit(x$Beds))}), digits = 2))
-
 demo.nas <- rbind(Missing.a = round(sapply(na.data, function(x){mean(na.omit(x$Asian))}) * 100, digits = 2), 
             Valid.a = round(sapply(valid.data, function(x){mean(na.omit(x$Asian))}) * 100, digits = 2),
             Missing.b = round(sapply(na.data, function(x){mean(na.omit(x$Black))}) * 100, digits = 2), 
@@ -265,59 +254,50 @@ demo.nas <- rbind(Missing.a = round(sapply(na.data, function(x){mean(na.omit(x$A
            Valid.h = round(sapply(valid.data, function(x){mean(na.omit(x$Hispanic))}) * 100, digits = 2),
            Missing.n = round(sapply(na.data, function(x){mean(na.omit(x$NativeAmerican))}) * 100, digits = 2), 
            Valid.n = round(sapply(valid.data, function(x){mean(na.omit(x$NativeAmerican))}) * 100, digits = 2))
-
 hosp <- data.frame(Percent = as.vector(hosp.nas), Status = rep(c("Missing", "Valid"), 10), 
                     Covariate = rep(c("RuralScore", "Beds"), each = 2, times = 5), 
                     Response = rep(c("AdmitLOS", "WaitForBed", "NonAdmitLOS", "MHLOS", 
                                      "LWBSrate"), each = 4))
-
 hosp.alos <- hosp[hosp$Response == "AdmitLOS",]
 hosp.wfb <- hosp[hosp$Response == "WaitForBed",]
 hosp.nlos <- hosp[hosp$Response == "NonAdmitLOS",]
 hosp.mhlos <- hosp[hosp$Response == "MHLOS",]
 hosp.lwbs <- hosp[hosp$Response == "LWBSrate",]
-
+# Plots of missing data rates
 par(mar = c(5,5,4,5))
 barplot(xtabs(Percent ~ Status + Covariate, data = hosp.alos), beside = T, legend = c("Missing", "Valid"), 
         main = "Data Presence by Size and Population Served", xlab = "Response Variable: ED LOS, Admitted Patients",
         ylab = "Number of Beds per Hospital", col = missing.colors)
 axis(side = 4, at = c(0,50,100,150), labels = c("0", "25", "50", "75"))
 mtext(side = 4, line = 2.75, "% of Patients from Rural area")
-
 par(mar = c(5,5,4,5))
 barplot(xtabs(Percent ~ Status + Covariate, data = hosp.wfb), beside = T, legend = c("Missing", "Valid"), 
         main = "Data Presence by Size and Population Served", xlab = "Response Variable: Time Spent Waiting for Inpatient Bed",
         ylab = "Number of Beds per Hospital", col = missing.colors)
 axis(side = 4, at = c(0,50,100,150), labels = c("0", "25", "50", "75"))
 mtext(side = 4, line = 2.75, "% of Patients from Rural area")
-
 par(mar = c(5,5,4,5))
 barplot(xtabs(Percent ~ Status + Covariate, data = hosp.nlos), beside = T, legend = c("Missing", "Valid"), 
         main = "Data Presence by Size and Population Served", xlab = "Response Variable: ED LOS, Non-Admitted Patients",
         ylab = "Number of Beds per Hospital", col = missing.colors)
 axis(side = 4, at = c(0,50,100,150), labels = c("0", "25", "50", "75"))
 mtext(side = 4, line = 2.75, "% of Patients from Rural area")
-
 par(mar = c(5,5,4,5))
 barplot(xtabs(Percent ~ Status + Covariate, data = hosp.mhlos), beside = T, legend = c("Missing", "Valid"), 
         main = "Data Presence by Size and Population Served", xlab = "Response Variable: ED LOS, Mental Health Patients",
         ylab = "Number of Beds per Hospital", col = missing.colors)
 axis(side = 4, at = c(0,50,100,150), labels = c("0", "25", "50", "75"))
 mtext(side = 4, line = 2.75, "% of Patients from Rural area")
-
 par(mar = c(5,5,4,5))
 barplot(xtabs(Percent ~ Status + Covariate, data = hosp.lwbs), beside = T, legend = c("Missing", "Valid"), 
         main = "Data Presence by Size and Population Served", sub = "Response Variable: LWBS Rate",
         ylab = "Number of Beds per Hospital", col = missing.colors)
 axis(side = 4, at = c(0,50,100,150), labels = c("0", "25", "50", "75"))
 mtext(side = 4, line = 2.75, "% of Patients from Rural area")
-
-
 demos <- data.frame(Percent = as.vector(demo.nas), Status = rep(c("Missing", "Valid"), 20), 
            Race = rep(c("Asian", "Black", "Hispanic", "Native American"), each = 2, times = 5), 
            Response = rep(c("AdmitLOS", "WaitForBed", "NonAdmitLOS", "MHLOS", 
                             "LWBSrate"), each = 8))
-
 par(mar = c(5.1, 4.1, 4.1, 2.1))
 barplot(xtabs(Percent ~ Status + Race , data = demos[demos$Response == "AdmitLOS",]), 
         beside = T, ylim = c(0, 20), col = missing.colors,
@@ -341,9 +321,8 @@ barplot(xtabs(Percent ~ Status + Race , data = demos[demos$Response == "LWBSrate
         xlab = "Response Variable: LWBS Rate", ylab = "Percentage")
 
 
-
-### Tables 
-# For paper
+### Table Images
+# For write-up
 colnames(resp.desc)[5] <- "LWBSrate (%)"
 htmlTable(resp.desc, css.cell = 'padding: 0px 30px 0px;') 
 htmlTable(resp.desc,css.cell = 'padding: 2px 30px 2px;')
@@ -352,9 +331,10 @@ htmlTable(race.desc,css.cell = 'padding: 2px 30px 2px;')
 colnames(cov.desc)[c(2,4,5)] <- c("Median Age", "% Rural Patients", "Sex Ratio")
 htmlTable(cov.desc,css.cell = 'padding: 2px 30px 2px;')
 htmlTable(missing.rates, rnames = F,css.cell = 'padding: 2px 30px 2px;') 
-
-### Tables for appendix
+# For appendix
 colnames(state.summaries)[6:7] <- c("LWBS Rate (%)", "Rating")
 htmlTable(state.summaries, rnames = F, css.cell = 'padding: 0px 40px 0px;')
 htmlTable(corrs, css.cell = 'padding: 0px 20px 0px;')
 
+
+### End of file ###

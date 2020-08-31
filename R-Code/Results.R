@@ -1,19 +1,26 @@
+# Nonlinear Models of Race-Related Disparities in Emergency Department Length of Stay at U.S. Hospitals
+# Jonathan M. Wall
+# Dissertation, Summer 2020
 
+### Results
+### This file creates regression tables for each of the five response variables
 
-# Load necessary libraries
-library(MASS)
+### Load necessary libraries
 library(betareg)
-library(sjPlot)
 library(car)
+library(MASS)
+library(sjPlot)
 
-# Read in and format data
-hospital_data <- read.csv("WaitTimeData.csv")
+### Read in data
+hospital_data <- read.csv("CleanedData.csv")
+
+### Format variables
 hospital_data$MedicaidExpansion <- as.factor(hospital_data$MedicaidExpansion)
 hospital_data$ED.Volume <- factor(hospital_data$ED.Volume, levels = c("Low", "Medium", "High", "Very High"))
 hospital_data$LWBSrateAdjusted <- (hospital_data$LWBSrate * (length(na.omit(hospital_data$LWBSrate)) - 1) + 0.5) / 
   length(na.omit(hospital_data$LWBSrate))
 
-# Build final datasets with outliers removed
+### Construct final datasets with outliers removed
 hospital_data.alos.m1 <- hospital_data[-c(425),]
 hospital_data.alos.m2 <- hospital_data[-c(425),]
 hospital_data.alos.m3 <- hospital_data[-c(425, 1041),]
@@ -35,6 +42,7 @@ hospital_data.lwbs.m2 <- hospital_data[-c(1475),]
 hospital_data.lwbs.m3 <- hospital_data[-c(1475),]
 hospital_data.lwbs.m4 <- hospital_data[-c(1475),]
 
+### Build models
 alos.final.m1 <- glm(AdmitLOS ~ Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "log"), data = hospital_data.alos.m1, na.action = na.omit)
 alos.final.m2 <- glm(AdmitLOS ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
@@ -47,7 +55,6 @@ alos.final.m4 <- glm(AdmitLOS ~ Beds + ED.Volume + HospitalRating +
                        RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
                        Black + Hispanic + Asian + NativeAmerican, 
                      family = Gamma(link = "log"), data = hospital_data.alos.m4, na.action = na.omit)
-
 wfb.final.m1 <- glm.nb(WaitForBed ~ Black + Hispanic + Asian + NativeAmerican, 
                        data = hospital_data.wfb.m1, na.action = na.omit)
 wfb.final.m2 <- glm.nb(WaitForBed ~ RuralScore + SexRatio + MedianAge + MedicaidExpansion + 
@@ -97,8 +104,7 @@ lwbs.final.m4 <- betareg(LWBSrateAdjusted ~ ED.Volume + HospitalRating +
                            Black + Hispanic + Asian + NativeAmerican, 
                          link = "log", data = hospital_data.lwbs.m4, na.action = na.omit)
 
-
-# Construct tables of regression results
+### Create tables of regression results
 resp.labels <- c("Model 1: Race Only", "Model 2: Race + Demographics", "Model 3: Race + Hospital Info", 
                  "Model 4: Race + Demographics + Hospital Info")
 tab_model(alos.final.m1, alos.final.m2, alos.final.m3, alos.final.m4, transform = "exp",
@@ -132,19 +138,4 @@ tab_model(lwbs.final.m1, lwbs.final.m2, lwbs.final.m3, lwbs.final.m4, transform 
           )) # Beds not signifiant
 
 
-nd <- data.frame(ED.Volume = "Low", HospitalRating = mean(na.omit(hospital_data$HospitalRating)),
-                 RuralScore = mean(na.omit(hospital_data$RuralScore)),
-                SexRatio = mean(na.omit(hospital_data$SexRatio)), 
-                MedianAge = mean(na.omit(hospital_data$MedianAge)),
-                MedicaidExpansion = "Yes", 
-                Black = mean(na.omit(hospital_data$Black)), 
-                Hispanic = mean(na.omit(hospital_data$Hispanic)),
-                Asian = 0.5,
-                NativeAmerican = mean(na.omit(hospital_data$NativeAmerican)),
-                Beds = mean(na.omit(hospital_data$Beds))
-                )
-predict(nlos.final.m4, newdata = nd, type = "response")
-hospital_data$MHLOS
-
-
-coef(mhlos.final.m4)
+### End of file ###
